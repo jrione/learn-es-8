@@ -821,3 +821,201 @@ curl -u elastic:changeme -X GET "199.241.138.138:9200/movies/_search?pretty" -H 
   }
 }'
 ```
+
+The "More Like This" (MLT) query finds documents that are "like" a given set of documents. In Elasticsearch, this typically means that it finds documents in the index that have similar text content in one or more fields. The MLT query can be useful for recommendation systems, content discovery, or finding duplicate content.
+
+The query works by using the input text to find terms with the highest term frequency-inverse document frequency (TF-IDF) score. It then searches for these terms in the specified fields of documents in the index.
+
+Here's a breakdown of the MLT query parameters you might use:
+
+- `fields`: The fields to be matched.
+- `like`: Text, document, or an array of texts or documents to be used as the query input. Instead of an entire document, you could also provide `like_text` which accepts a text string.
+- `min_term_freq`: The minimum term frequency below which terms will be ignored in the source doc.
+- `max_query_terms`: The maximum number of query terms to include in the MLT query.
+- `min_doc_freq`: The minimum document frequency below which terms will be ignored in the entire index.
+- `max_doc_freq`: The maximum document frequency above which terms will be ignored in the entire index.
+- `minimum_should_match`: The minimum number of optional should clauses to match.
+
+Here’s a practical example:
+
+Imagine you have an index of articles and you want to find articles that are similar to a specific article based on their content. The article you're basing your query on has the ID `1`.
+
+```json
+GET /articles/_search
+{
+  "query": {
+    "more_like_this": {
+      "fields": ["title", "content"], 
+      "like": [
+        {
+          "_index": "articles",
+          "_id": "1"
+        }
+      ],
+      "min_term_freq": 1,
+      "min_doc_freq": 1
+    }
+  }
+}
+```
+
+In this query:
+
+- We're searching the `articles` index.
+- We want to find documents that are similar to the document with ID `1`.
+- We're looking for similarity in the `title` and `content` fields.
+- We specify that terms must appear at least once in the source document (`min_term_freq`) and at least once in the index (`min_doc_freq`) to be considered.
+
+The result will be a set of documents from the `articles` index that are similar to the article with ID `1`.
+
+Now, if you don't have a specific document in mind but want to find documents similar to a text snippet, you can use the `like_text` parameter like so:
+
+```json
+GET /articles/_search
+{
+  "query": {
+    "more_like_this": {
+      "fields": ["content"],
+      "like_text": "this is a sample text",
+      "min_term_freq": 1,
+      "min_doc_freq": 1
+    }
+  }
+}
+```
+
+Here, the MLT query finds articles whose `content` is similar to the phrase "this is a sample text".
+
+The **unlike** parameter in the "More Like This" (MLT) query is used to specify the text, document, or array of text/documents that the results should not be similar to. It's useful for filtering out documents that are similar to content that you want to exclude.
+
+Here's an example of how you might use the "unlike" parameter:
+
+Assume you have an index of articles and you want to find articles that are similar to a particular article with ID `1`, but you want to exclude articles that are similar to another article with ID `2`.
+
+```json
+GET /articles/_search
+{
+  "query": {
+    "more_like_this": {
+      "fields": ["title", "content"],
+      "like": [
+        {
+          "_index": "articles",
+          "_id": "1"
+        }
+      ],
+      "unlike": [
+        {
+          "_index": "articles",
+          "_id": "2"
+        }
+      ],
+      "min_term_freq": 1,
+      "min_doc_freq": 1,
+      "max_query_terms": 12
+    }
+  }
+}
+```
+
+In this query:
+
+- The `fields` to be considered for similarity are `title` and `content`.
+- The `like` parameter indicates that we are looking for documents similar to the document with ID `1`.
+- The `unlike` parameter indicates that we want to exclude documents that are similar to the document with ID `2`.
+- Parameters such as `min_term_freq`, `min_doc_freq`, and `max_query_terms` are used to fine-tune the MLT query behavior.
+
+The returned results will be documents that are similar to the content of the document with ID `1`, but dissimilar to the content of the document with ID `2`.
+
+It's also possible to use `like_text` and `unlike_text` to include or exclude documents that are similar to specific text snippets:
+
+```json
+GET /articles/_search
+{
+  "query": {
+    "more_like_this": {
+      "fields": ["content"],
+      "like_text": "interesting article about elasticsearch",
+      "unlike_text": "common troubleshooting issues",
+      "min_term_freq": 1,
+      "min_doc_freq": 1,
+      "max_query_terms": 12
+    }
+  }
+}
+```
+
+In this case:
+
+- The query will return documents where the `content` is similar to the phrase "interesting article about elasticsearch".
+- It will exclude documents where the `content` is similar to the phrase "common troubleshooting issues".
+
+### Recommender System
+
+In Elasticsearch, a recommendation system can be built using various query features, like the More Like This (MLT) query, term aggregations, and script-based scoring, among others. Elasticsearch 8 continues to support these features, and while it doesn't provide an out-of-the-box recommendation engine, its powerful search and analytics capabilities can be harnessed to build one.
+
+Here's an outline of how you might build a simple recommender system in Elasticsearch:
+
+1. **Content-Based Filtering:**
+   Using the More Like This query, you can find documents that closely match the content of a user's previously liked items. This is akin to saying "find items similar to these" in the context of what the user has interacted with.
+
+2. **Collaborative Filtering:**
+   For user-based collaborative filtering, you can index user preferences and use script-based queries to calculate similarity scores between users based on their preferences or interactions. Then, recommend items liked by similar users.
+
+3. **Item-Based Collaborative Filtering:**
+   This is similar to user-based but instead, you calculate the similarity between items based on user interactions. For example, if users who liked item A also tend to like item B, then item B could be recommended to someone who liked item A.
+
+Here is a practical example using the MLT query for a content-based recommendation:
+
+```json
+GET /movies/_search
+{
+  "query": {
+    "more_like_this": {
+      "fields": ["title", "genres"],
+      "like": [
+        {
+          "_index": "movies",
+          "_id": "pEGurYsBLhbL_k5w9fOn"
+        }
+      ],
+      "min_term_freq": 1,
+      "max_query_terms": 12
+    }
+  }
+}
+```
+
+For collaborative filtering, you could use a combination of aggregations and script scoring to find users with similar preferences and then recommend items accordingly:
+
+```json
+GET /ratings/_search
+{
+  "size": 0,
+  "query": {
+    "match": {
+      "title": "Inception"
+    }
+  },
+  "aggs": {
+    "similar_users": {
+      "terms": {
+        "field": "user_id",
+        "size": 10
+      },
+      "aggs": {
+        "recommendations": {
+          "top_hits": {
+            "size": 10,
+            "_source": {
+              "includes": ["title"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This search would find users who liked "Inception" and then use sub-aggregations to find other movies that these similar users also liked.
