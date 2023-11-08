@@ -806,3 +806,18 @@ curl -u elastic:changeme -XGET 'localhost:9200/movies/_search?pretty' -H 'Conten
 
 ```
 
+### "More Like This" query
+
+```bash
+curl -u elastic:changeme -X GET "199.241.138.138:9200/movies/_search?pretty" -H 'Content-Type: application/json' -d'
+{
+  "query": {
+    "more_like_this" : {
+      "fields" : ["title"],
+      "like" : "Star",
+      "min_term_freq" : 1,
+      "max_query_terms" : 12
+    }
+  }
+}'
+```
