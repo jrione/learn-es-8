@@ -149,7 +149,7 @@ curl -u elastic:changeme -H 'Content-Type: application/json' -XGET 'http://89.23
 }'
 ```
 
-### nested aggregations
+### Nested aggregations
 
 what's the average rating for each Star Wars movie?
 
@@ -177,4 +177,3 @@ curl -u elastic:changeme -H 'Content-Type: application/json' -XGET 'http://89.23
   }
 }'
 ```
-
